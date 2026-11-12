@@ -3,8 +3,7 @@
 A [Paseo](https://paseo.sh) plugin that shows the latest GitHub deployment for a workspace's pull request in the workspace header.
 
 - A rocket icon shows the deployment state: yellow and pulsing while queued or in progress, green on success, red on failure, grey when inactive.
-- Clicking the rocket opens the deployed environment URL, or the deployment log when there is no environment URL.
-- The chevron next to it opens a menu with **Open in browser** and **Copy link**.
+- Clicking the rocket opens a menu with **Open in browser** and **Copy link**. Both use the deployed environment URL, or the deployment log when there is no environment URL.
 - Hover the icon to see the environment name and state.
 
 The icon appears only for workspaces linked to a GitHub pull request whose recent commits have a deployment, for example preview environments created per PR.

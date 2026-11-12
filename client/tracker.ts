@@ -9,7 +9,6 @@ import { type DeploymentState, deploymentStatusRpc } from "../shared/deployment"
 import { statusIcon } from "./status-icon";
 
 const BUTTON_ID = "deployment";
-const MENU_ID = "deployment-menu";
 const PENDING_POLL_MS = 10_000;
 const SETTLED_POLL_MS = 60_000;
 const CLOSED_PR_POLL_MS = 5 * 60_000;
@@ -25,7 +24,6 @@ export interface PullRequestInfo {
 /** Polls the latest deployment for one workspace's PR and mirrors it into a header button. */
 export class DeploymentTracker {
   private registration: PluginButtonRegistration | null = null;
-  private menuRegistration: PluginButtonRegistration | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private state: DeploymentState = { kind: "none" };
   private lastFetchAt = 0;
@@ -56,8 +54,6 @@ export class DeploymentTracker {
     this.timer = null;
     this.registration?.remove();
     this.registration = null;
-    this.menuRegistration?.remove();
-    this.menuRegistration = null;
   }
 
   private async poll(): Promise<void> {
@@ -91,28 +87,16 @@ export class DeploymentTracker {
     const state = this.state;
     if (state.kind === "none") {
       this.registration?.update({ visible: false });
-      this.menuRegistration?.update({ visible: false });
       return;
     }
     // Prefer the deployed app; fall back to the log only when the deployment has no environment URL.
     const target = state.url ?? state.logUrl;
     const commitNote = state.isHead ? "" : ` (earlier commit ${state.sha.slice(0, 7)})`;
-    const title = `${state.environment} deployment: ${state.state.toLowerCase().replace(/_/g, " ")}${commitNote}`;
-    const open = async () => {
-      if (target) await openExternalUrl(target);
-    };
 
-    // Paseo has no split button, so the "split" is a status button followed by a chevron menu button.
-    const main: PluginButton = {
-      title,
+    // Paseo has no split button: one menu button shows the status icon plus the host's chevron.
+    const button: PluginButton = {
+      title: `${state.environment} deployment: ${state.state.toLowerCase().replace(/_/g, " ")}${commitNote}`,
       icon: statusIcon(state.tone),
-      visible: true,
-      disabled: target === null,
-      behavior: { kind: "action", onPress: open },
-    };
-    const menu: PluginButton = {
-      title: "Deployment actions",
-      icon: "ChevronDown",
       visible: true,
       disabled: target === null,
       behavior: {
@@ -123,7 +107,12 @@ export class DeploymentTracker {
             id: "open",
             title: "Open in browser",
             icon: "ExternalLink",
-            behavior: { kind: "action", onPress: open },
+            behavior: {
+              kind: "action",
+              async onPress() {
+                if (target) await openExternalUrl(target);
+              },
+            },
           },
           {
             kind: "item",
@@ -141,9 +130,7 @@ export class DeploymentTracker {
       },
     };
 
-    if (this.registration) this.registration.update(main);
-    else this.registration = this.client.addHeaderButton({ id: BUTTON_ID, workspaceId: this.workspaceId, button: main });
-    if (this.menuRegistration) this.menuRegistration.update(menu);
-    else this.menuRegistration = this.client.addHeaderButton({ id: MENU_ID, workspaceId: this.workspaceId, button: menu });
+    if (this.registration) this.registration.update(button);
+    else this.registration = this.client.addHeaderButton({ id: BUTTON_ID, workspaceId: this.workspaceId, button });
   }
 }
